@@ -3,11 +3,42 @@ import subprocess
 from deep_translator import GoogleTranslator
 from tqdm import tqdm
 from pathlib import Path
+import json
+
+def get_best_subtitle_stream(mkv_path):
+    cmd = [
+        "ffprobe", "-v", "error", "-select_streams", "s", 
+        "-show_entries", "stream=index:stream_tags=language:stream_disposition=default", 
+        "-of", "json", str(mkv_path)
+    ]
+    try:
+        output = subprocess.check_output(cmd, text=True)
+        data = json.loads(output)
+        streams = data.get("streams", [])
+        if not streams:
+            return 0
+            
+        # Priority 1: English (eng or en)
+        for i, stream in enumerate(streams):
+            lang = stream.get("tags", {}).get("language", "").lower()
+            if lang in ["eng", "en"]:
+                return i
+                
+        # Priority 2: Default disposition
+        for i, stream in enumerate(streams):
+            if stream.get("disposition", {}).get("default", 0) == 1:
+                return i
+                
+        # Priority 3: First subtitle stream
+        return 0
+    except Exception:
+        return 0
 
 def extract_subtitles(mkv_path, srt_output_path):
+    stream_index = get_best_subtitle_stream(mkv_path)
     cmd = [
         "ffmpeg", "-y", "-i", str(mkv_path), 
-        "-map", "0:s:0", str(srt_output_path)
+        "-map", f"0:s:{stream_index}", str(srt_output_path)
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Extracted subtitles to {srt_output_path.name}", flush=True)
@@ -15,7 +46,7 @@ def extract_subtitles(mkv_path, srt_output_path):
 def translate_srt_file(input_srt_path, output_srt_path):
     print(f"Translating {input_srt_path.name} via Google Translate (Free)...", flush=True)
     subs = pysrt.open(str(input_srt_path))
-    translator = GoogleTranslator(source='en', target='uk')
+    translator = GoogleTranslator(source='auto', target='uk')
     
     # Use translate_batch for speed
     texts = [sub.text for sub in subs]
@@ -86,7 +117,7 @@ def process_all_mkv_files():
         output_dir = output_base / output_dir_name
         output_dir.mkdir(exist_ok=True, parents=True)
         
-        original_srt = output_dir / f"{base_name}_eng.srt"
+        original_srt = output_dir / f"{base_name}_orig.srt"
         translated_srt = output_dir / f"{base_name}_ukr.srt"
         final_mkv = output_dir / f"{base_name}_UA-sub.mkv"
         
