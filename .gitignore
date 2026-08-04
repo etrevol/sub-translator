@@ -1,0 +1,19 @@
+# Environments
+venv/
+.env
+
+# Cache
+__pycache__/
+*.pyc
+
+# Data
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+*.mkv
+*.srt
+
+# Temp scripts
+test_genai.py
+inject.py
