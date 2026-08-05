@@ -75,19 +75,19 @@ def extract_subtitles(mkv_path, srt_output_path):
 
 def translate_srt_file(input_srt_path, output_srt_path):
     subs = pysrt.open(str(input_srt_path))
-    batch_size = 100 
+    batch_size = 40 
     
     for i in tqdm(range(0, len(subs), batch_size), desc=f"Translating {input_srt_path.name}", unit="batch"):
         batch = subs[i:i + batch_size]
         texts_to_translate = [sub.text for sub in batch]
-        combined_text = "\n[SPLIT]\n".join(texts_to_translate)
+        combined_text = "\n|||\n".join(texts_to_translate)
         
         # Professional translation prompt with strict formatting constraints
         prompt = (
             "You are a professional movie subtitle translator. Translate the following subtitles into Ukrainian. "
             "The source language may vary, but adapt idioms, slang, and cultural references naturally while maintaining the original tone and emotion.\n"
-            "CRITICAL: The text blocks are separated by the exact string '[SPLIT]'. "
-            "You MUST return exactly the same number of '[SPLIT]' separators. "
+            "CRITICAL: The text blocks are separated by the exact string '|||'. "
+            "You MUST return exactly the same number of '|||' separators. "
             "Do not add any commentary or extra text.\n\n"
             f"{combined_text}"
         )
@@ -102,7 +102,7 @@ def translate_srt_file(input_srt_path, output_srt_path):
                 if not response.text:
                     raise ValueError("Empty response from API (possibly blocked by safety filters).")
                     
-                translated_chunks = response.text.split('[SPLIT]')
+                translated_chunks = response.text.split('|||')
                 
                 # Verify separator count to avoid shifting subtitle timings
                 if len(translated_chunks) == len(batch):
