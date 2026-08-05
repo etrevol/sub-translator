@@ -126,7 +126,7 @@ def inject_subtitles(original_mkv, new_srt, output_mkv):
 
 def check_disk_space():
     import sys
-    # Змініть ліміт 1.0 на інше значення (у ГБ) за потреби
+    # Change the 1.0 limit to another value (in GB) if needed
     min_free_gb = 1.0
     total, used, free = shutil.disk_usage(".")
     free_gb = free / (2**30)
@@ -157,9 +157,9 @@ def process_all_mkv_files():
         translated_srt = output_dir / f"{base_name}_ukr.srt"
         final_mkv = output_dir / f"{base_name}_UA-sub.mkv"
         
-        # Перевірка, чи файл вже був успішно оброблений
+        # Check if the file was already successfully processed
         if final_mkv.exists() and final_mkv.stat().st_size > 0:
-            print(f"Вже опрацьовано, пропускаю... ({final_mkv.name})", flush=True)
+            print(f"Already processed, skipping... ({final_mkv.name})", flush=True)
             continue
         
         extract_subtitles(mkv_file, original_srt)
