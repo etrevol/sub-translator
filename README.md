@@ -11,6 +11,10 @@ Automated Python tool designed to extract English subtitles from MKV video files
 - **Two Translation Modes:**
   - **Gemini API (`translator.py`)**: High-quality contextual translation using Google's generative models (`gemini-3.5-flash-lite`).
   - **Google Translate (`Google_Translate_Engine_translator.py`)**: Fast, completely free translation with zero API limits using `deep-translator`.
+- **Resilience & State Management:**
+  - Auto-resumes from where it left off (automatically skips successfully processed files in the output directory).
+  - Robust retry logic for API limitations and strict format adherence.
+  - Disk space monitoring to prevent system crashes during final video muxing.
 - **Lossless Subtitle Injection**: Retains all original video, audio, and subtitle streams. Adds the new Ukrainian subtitle track seamlessly and sets it as the default.
 
 ## Prerequisites
