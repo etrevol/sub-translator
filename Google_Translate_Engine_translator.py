@@ -4,6 +4,8 @@ from deep_translator import GoogleTranslator
 from tqdm import tqdm
 from pathlib import Path
 import json
+import shutil
+import time
 
 def get_best_subtitle_stream(mkv_path):
     cmd = [
@@ -62,31 +64,39 @@ def translate_srt_file(input_srt_path, output_srt_path):
     subs = pysrt.open(str(input_srt_path))
     translator = GoogleTranslator(source='auto', target='uk')
     
-    # Use translate_batch for speed
-    texts = [sub.text for sub in subs]
-    
     chunk_size = 50
-    translated_texts = []
+    max_retries = 3
     
-    for i in tqdm(range(0, len(texts), chunk_size)):
-        chunk = texts[i:i+chunk_size]
-        try:
-            res = translator.translate_batch(chunk)
-            translated_texts.extend(res)
-        except Exception as e:
-            # Fallback to single translations
-            for text in chunk:
-                try:
-                    translated_texts.append(translator.translate(text))
-                except:
-                    translated_texts.append(text)
-
-    for i, sub in enumerate(subs):
-        if i < len(translated_texts) and translated_texts[i]:
-            sub.text = translated_texts[i]
-
+    for i in tqdm(range(0, len(subs), chunk_size)):
+        batch = subs[i:i+chunk_size]
+        texts = [sub.text for sub in batch]
+        
+        for attempt in range(max_retries):
+            try:
+                translated_chunks = translator.translate_batch(texts)
+                
+                # Verify separator count to avoid shifting subtitle timings
+                if len(translated_chunks) == len(batch):
+                    for j, translated_text in enumerate(translated_chunks):
+                        batch[j].text = translated_text.strip()
+                    time.sleep(1) # Small delay for free API
+                    break # Success, exit retry loop
+                else:
+                    print(f"\nWarning: Separator mismatch in batch {i} (attempt {attempt+1}/{max_retries}).", flush=True)
+                    if attempt == max_retries - 1:
+                        print(f"Failed to translate batch {i} after 3 attempts. Skipping file.", flush=True)
+                        return False
+                    time.sleep(2)
+                        
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    print(f"\nTranslation failed for batch {i}: {e}. Skipping file.", flush=True)
+                    return False
+                time.sleep(2)
+            
     subs.save(str(output_srt_path), encoding='utf-8')
     print(f"Translation complete for {output_srt_path.name}", flush=True)
+    return True
 
 def get_total_stream_count(mkv_path):
     cmd = [
@@ -114,6 +124,16 @@ def inject_subtitles(original_mkv, new_srt, output_mkv):
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Created final video: {output_mkv.name}", flush=True)
 
+def check_disk_space():
+    import sys
+    # Змініть ліміт 1.0 на інше значення (у ГБ) за потреби
+    min_free_gb = 1.0
+    total, used, free = shutil.disk_usage(".")
+    free_gb = free / (2**30)
+    if free_gb < min_free_gb:
+        print(f"Error: Not enough disk space. Only {free_gb:.2f} GB free, required {min_free_gb} GB.", flush=True)
+        sys.exit(1)
+
 def process_all_mkv_files():
     input_dir = Path("input")
     output_base = Path("output")
@@ -122,6 +142,8 @@ def process_all_mkv_files():
     if not mkv_files:
         print("No .mkv files found in the 'input' directory.", flush=True)
         return
+
+    check_disk_space()
 
     for mkv_file in mkv_files:
         print(f"\nProcessing {mkv_file.name}...", flush=True)
@@ -135,12 +157,21 @@ def process_all_mkv_files():
         translated_srt = output_dir / f"{base_name}_ukr.srt"
         final_mkv = output_dir / f"{base_name}_UA-sub.mkv"
         
+        # Перевірка, чи файл вже був успішно оброблений
+        if final_mkv.exists() and final_mkv.stat().st_size > 0:
+            print(f"Вже опрацьовано, пропускаю... ({final_mkv.name})", flush=True)
+            continue
+        
         extract_subtitles(mkv_file, original_srt)
         
+        # Check if extraction was successful before proceeding
         if original_srt.exists() and original_srt.stat().st_size > 0:
-            translate_srt_file(original_srt, translated_srt)
+            success = translate_srt_file(original_srt, translated_srt)
+            if not success:
+                print(f"Skipping {mkv_file.name} due to translation errors.", flush=True)
+                continue
             inject_subtitles(mkv_file, translated_srt, final_mkv)
-            print(f"Success! Output saved to: {output_dir}", flush=True)
+            print(f"Success! Output saved to: {output_dir.name}", flush=True)
         else:
             print(f"Failed to extract subtitles from {mkv_file.name}. Ensure the file contains a subtitle track.", flush=True)
 

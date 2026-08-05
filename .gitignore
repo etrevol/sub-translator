@@ -17,3 +17,5 @@ output/*
 # Temp scripts
 test_genai.py
 inject.py
+
+*.log
