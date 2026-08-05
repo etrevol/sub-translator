@@ -24,7 +24,7 @@ client = genai.Client(api_key=api_key)
 def get_best_subtitle_stream(mkv_path):
     cmd = [
         "ffprobe", "-v", "error", "-select_streams", "s", 
-        "-show_entries", "stream=index:stream_tags=language:stream_disposition=default", 
+        "-show_entries", "stream=index:stream_tags=language,title:stream_disposition=default", 
         "-of", "json", str(mkv_path)
     ]
     try:
