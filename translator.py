@@ -34,13 +34,27 @@ def get_best_subtitle_stream(mkv_path):
         if not streams:
             return 0
             
-        # Priority 1: English (eng or en)
+        # Priority 1: English (eng or en), avoiding "signs/songs"
         for i, stream in enumerate(streams):
-            lang = stream.get("tags", {}).get("language", "").lower()
-            if lang in ["eng", "en"]:
+            tags = stream.get("tags", {})
+            lang = tags.get("language", "").lower()
+            title = tags.get("title", "").lower()
+            if lang in ["eng", "en"] and "sign" not in title and "song" not in title:
                 return i
                 
-        # Priority 2: Default disposition
+        # Priority 2: Any English track (fallback)
+        for i, stream in enumerate(streams):
+            if stream.get("tags", {}).get("language", "").lower() in ["eng", "en"]:
+                return i
+                
+        # Priority 3: Default disposition, avoiding "signs/songs"
+        for i, stream in enumerate(streams):
+            tags = stream.get("tags", {})
+            title = tags.get("title", "").lower()
+            if stream.get("disposition", {}).get("default", 0) == 1 and "sign" not in title and "song" not in title:
+                return i
+                
+        # Priority 4: Default disposition (fallback)
         for i, stream in enumerate(streams):
             if stream.get("disposition", {}).get("default", 0) == 1:
                 return i
