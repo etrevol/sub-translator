@@ -1,4 +1,4 @@
 google-genai
 pysrt
 python-dotenv
-tqdm
+deep-translator

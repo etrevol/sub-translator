@@ -19,3 +19,7 @@ test_genai.py
 inject.py
 
 *.log
+
+# Claude Code
+CLAUDE.md
+.claude/
