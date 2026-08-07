@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """sub-translator — the command line interface.
 
 Run with no arguments and it does the obvious thing: translate every .mkv in

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Compatibility entry point: free Google Translate engine.
 
 Kept so `python Google_Translate_Engine_translator.py` keeps working.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Compatibility entry point: Gemini engine.
 
 Kept so `python translator.py` keeps working. Everything now lives in
