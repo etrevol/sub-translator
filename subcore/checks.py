@@ -20,7 +20,7 @@ from pathlib import Path
 
 from . import config, media
 from .engines import Engine, GeminiEngine
-from .ui import Console, ERR, MUTED, OK, WARN, fmt_size
+from .ui import ACCENT, Console, ERR, MUTED, OK, TEXT, WARN, fmt_size
 
 OK_S, WARN_S, FAIL_S, SKIP_S = "ok", "warn", "fail", "skip"
 
@@ -54,12 +54,31 @@ def check_python() -> Check:
     return Check("python", OK_S, version)
 
 
+def check_interpreter() -> Check:
+    """Which python is running, and is it the project's own environment?
+
+    Packages belong in `.venv`, not in the user's system Python; this is the
+    check that makes a wrong interpreter visible instead of mysterious.
+    """
+    exe = Path(sys.executable)
+    if config.in_project_venv():
+        return Check("interpreter", OK_S, f"project {config.VENV_DIR}")
+    if config.venv_exists():
+        return Check("interpreter", WARN_S, f"system python — {exe}",
+                     f"a {config.VENV_DIR} exists but is not the one running; "
+                     "activate it, or launch through run.bat")
+    if config.in_any_venv():
+        return Check("interpreter", OK_S, f"virtualenv — {exe}")
+    return Check("interpreter", WARN_S, f"system python — {exe}",
+                 f"no {config.VENV_DIR} yet; the setup below keeps this project's "
+                 "packages off your system Python")
+
+
 def check_package(module: str, package: str) -> Check:
     try:
         importlib.import_module(module)
     except ImportError:
-        return Check(package, FAIL_S, "not installed",
-                     "pip install -r requirements.txt")
+        return Check(package, FAIL_S, "not installed", config.pip_command())
     return Check(package, OK_S, "installed")
 
 
@@ -183,7 +202,7 @@ def run_checks(engine: Engine, input_path: Path, output_path: Path, console: Con
                include_terminal: bool = False) -> tuple[list[Check], list[Path]]:
     """Local checks always run; `online` adds a reachability probe and `deep`
     additionally spends one API call to confirm the key and model."""
-    checks: list[Check] = [check_python()]
+    checks: list[Check] = [check_python(), check_interpreter()]
 
     checks.append(check_package("pysrt", "pysrt"))
     checks.append(check_package("dotenv", "python-dotenv"))
@@ -210,6 +229,30 @@ def run_checks(engine: Engine, input_path: Path, output_path: Path, console: Con
         checks.append(check_terminal(console))
 
     return checks, files
+
+
+def needs_setup(checks: list[Check]) -> bool:
+    """True when a check failed because a python package is missing."""
+    return any(c.status == FAIL_S and "install" in c.detail.lower() + c.hint.lower()
+               for c in checks)
+
+
+def setup_block(console: Console) -> None:
+    """The copy-paste cure for a machine that has never run this project."""
+    console.blank()
+    console.rule(console.paint("Setup", ACCENT))
+    console.write("  " + console.paint(
+        "This project runs from its own virtual environment, so its packages",
+        TEXT))
+    console.write("  " + console.paint(
+        "never touch your system Python. From the project folder, run:", TEXT))
+    console.blank()
+    for command in config.setup_commands():
+        console.write(f"    {console.paint(command, ACCENT)}")
+    console.blank()
+    console.write("  " + console.paint(
+        f"After that, run.bat picks up {config.VENV_DIR} on its own.", MUTED))
+    console.rule()
 
 
 def report(console: Console, checks: list[Check], title: str = "Preflight") -> None:

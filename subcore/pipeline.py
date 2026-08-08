@@ -154,7 +154,10 @@ class Pipeline:
             console.error(
                 f"{checks_mod.fatal_count(check_list)} check(s) failed — nothing was processed."
             )
-            console.hint("run `python subtrans.py doctor` for the full diagnosis")
+            if checks_mod.needs_setup(check_list):
+                checks_mod.setup_block(console)
+            else:
+                console.hint("run `python subtrans.py doctor` for the full diagnosis")
             return 2
 
         plans = [build_plan(path, options) for path in files]

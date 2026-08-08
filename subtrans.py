@@ -264,6 +264,8 @@ def cmd_doctor(args, console: Console) -> int:
 
     failures = checks_mod.fatal_count(check_list)
     warnings = checks_mod.warn_count(check_list)
+    if checks_mod.needs_setup(check_list) or not config.venv_exists():
+        checks_mod.setup_block(console)
     console.blank()
     if failures:
         console.error(f"{failures} problem(s) must be fixed before a run.")

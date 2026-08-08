@@ -116,7 +116,7 @@ class GeminiEngine(Engine):
         except ImportError:
             problems.append(Problem(
                 "error", "python package 'google-genai' is not installed",
-                "pip install -r requirements.txt",
+                config.pip_command(),
             ))
         key = (self.api_key or "").strip()
         if not key:
@@ -151,7 +151,7 @@ class GeminiEngine(Engine):
             from google import genai
         except ImportError as exc:
             raise EngineError(
-                "google-genai is not installed — run: pip install -r requirements.txt"
+                f"google-genai is not installed — run: {config.pip_command()}"
             ) from exc
         if not (self.api_key or "").strip():
             raise EngineError("GEMINI_API_KEY is not set — see .env.example")
@@ -318,7 +318,7 @@ class GoogleEngine(Engine):
         except ImportError:
             return [Problem(
                 "error", "python package 'deep-translator' is not installed",
-                "pip install -r requirements.txt",
+                config.pip_command(),
             )]
         return [Problem("ok", "deep-translator available (no API key required)")]
 
@@ -327,7 +327,7 @@ class GoogleEngine(Engine):
             from deep_translator import GoogleTranslator
         except ImportError as exc:
             raise EngineError(
-                "deep-translator is not installed — run: pip install -r requirements.txt"
+                f"deep-translator is not installed — run: {config.pip_command()}"
             ) from exc
         try:
             self.translator = GoogleTranslator(

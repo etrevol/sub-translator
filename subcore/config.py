@@ -7,6 +7,7 @@ tiny built-in parser keeps `.env` working even before `pip install`.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 APP_NAME = "sub-translator"
@@ -136,6 +137,73 @@ def lang_tag(code: str) -> str:
 
 def lang_matches(track_lang: str, wanted: str) -> bool:
     return bool(track_lang) and normalize_lang(track_lang) == normalize_lang(wanted)
+
+
+# --- virtualenv -------------------------------------------------------------
+#
+# The project is meant to run from its own `.venv` so that nothing lands in the
+# user's system Python. Nothing here creates or installs anything — it only
+# works out where things stand so the checks can say something useful.
+
+VENV_DIR = ".venv"
+
+
+def project_root() -> Path:
+    """The repo root, derived from this file rather than the cwd."""
+    return Path(__file__).resolve().parent.parent
+
+
+def venv_python(root: Path | None = None) -> Path:
+    base = (root or project_root()) / VENV_DIR
+    return base / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def venv_exists(root: Path | None = None) -> bool:
+    return venv_python(root).is_file()
+
+
+def in_project_venv(root: Path | None = None) -> bool:
+    """True when the running interpreter *is* the project's `.venv` python."""
+    candidate = venv_python(root)
+    if not candidate.is_file():
+        return False
+    try:
+        return candidate.resolve() == Path(sys.executable).resolve()
+    except OSError:
+        return False
+
+
+def in_any_venv() -> bool:
+    return sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+
+
+def setup_commands() -> list[str]:
+    """The exact commands that create the venv and install into it."""
+    if os.name == "nt":
+        return [
+            "python -m venv .venv",
+            r".venv\Scripts\activate",
+            "pip install -r requirements.txt",
+        ]
+    return [
+        "python3 -m venv .venv",
+        "source .venv/bin/activate",
+        "pip install -r requirements.txt",
+    ]
+
+
+def pip_command() -> str:
+    """One-liner that installs the requirements into the right interpreter."""
+    if in_project_venv() or in_any_venv():
+        return "pip install -r requirements.txt"
+    if venv_exists():
+        exe = venv_python()
+        try:
+            exe = exe.relative_to(Path.cwd())
+        except ValueError:
+            pass
+        return f'"{exe}" -m pip install -r requirements.txt'
+    return "see the setup block below"
 
 
 # --- environment ------------------------------------------------------------

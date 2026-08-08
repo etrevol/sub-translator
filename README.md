@@ -14,9 +14,13 @@ that tells you what is wrong *before* it spends an hour on it.
 
 ```bash
 git clone <this repo> && cd sub-translator
-python -m venv venv && venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+Everything is installed into the project's own `.venv`, so **nothing lands in your
+system Python**. Delete the folder and the machine is exactly as it was.
 
 1. Drop your `.mkv` files into `input/`.
 2. Run it:
@@ -27,8 +31,18 @@ python subtrans.py
 
 3. Collect the results from `output/`.
 
-On Windows you can simply **double-click `run.bat`** — it finds the virtualenv,
-runs the defaults and keeps the window open at the end.
+On Windows you can simply **double-click `run.bat`** — it uses `.venv` if it is
+there, runs the defaults and keeps the window open at the end.
+
+Forgot a step? Nothing breaks and nothing gets installed behind your back: the
+preflight names the interpreter it is running on and prints the three commands
+above.
+
+```
+  ▲ interpreter     system python — C:\...\Python312\python.exe
+    › no .venv yet; the setup below keeps this project's packages off your system Python
+  ✖ google-genai    not installed
+```
 
 Not sure the environment is ready? Ask first:
 
@@ -126,7 +140,10 @@ Dense dialogue gets smaller batches, sparse films get bigger ones.
 
 Every run starts with a preflight; nothing is extracted until it passes.
 
-- Python version, and every required package (with the exact `pip` command to fix it)
+- Python version, and which interpreter is running — the project `.venv`, some other
+  virtualenv, or your system Python
+- Every required package, with the exact command that installs it into the right
+  interpreter
 - `ffmpeg` **and** `ffprobe` on PATH, with versions
 - `.env` present; `GEMINI_API_KEY` present, unquoted, untrimmed, plausible length
 - The configured Gemini model exists for your key (`doctor`)
@@ -206,8 +223,11 @@ subtitle track kept, plus one new track tagged `language=ukr`, titled
 
 - **Python 3.8+**
 - **FFmpeg** on PATH ([download](https://ffmpeg.org/download.html))
-- `pip install -r requirements.txt` — `google-genai`, `pysrt`, `python-dotenv`,
-  `deep-translator`
+- Four packages, installed into `.venv` by `pip install -r requirements.txt`:
+  `google-genai`, `pysrt`, `python-dotenv`, `deep-translator`
+
+The tool never installs anything itself and never writes outside the project
+folder. `.venv/` is gitignored, so it is yours to delete at any time.
 
 The terminal UI has **no dependencies at all**: colour, tables and progress bars are
 plain ANSI, degrading from truecolor → 256 colours → 16 → none, and Unicode → ASCII.
